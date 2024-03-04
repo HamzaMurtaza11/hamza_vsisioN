@@ -2,12 +2,18 @@ from flask import Flask, request, jsonify
 from keras.models import load_model
 from PIL import Image, ImageOps
 import numpy as np
+from waitress import serve
+import io
 
 app = Flask(__name__)
 
-# Load the model and labels when the application starts
-model = load_model("keras_model.h5", compile=False)
-class_names = open("labels.txt", "r").readlines()
+# Consider loading the model and labels in a function to avoid global scope issues
+def load_model_and_labels():
+    model = load_model("keras_model.h5", compile=False)
+    class_names = open("labels.txt", "r").readlines()
+    return model, class_names
+
+model, class_names = load_model_and_labels()
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -18,9 +24,10 @@ def predict():
         return jsonify({"error": "No file selected"}), 400
 
     try:
-        image = Image.open(file).convert("RGB")
+        # Using BytesIO for in-memory file storage to avoid read/write filesystem issues
+        image = Image.open(io.BytesIO(file.read())).convert("RGB")
         size = (224, 224)
-        image = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
+        image = ImageOps.fit(image, size, Image.ANTIALIAS)
 
         image_array = np.asarray(image)
         normalized_image_array = (image_array.astype(np.float32) / 127.5) - 1
@@ -40,5 +47,4 @@ def predict():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-if __name__ == '__main__':
-    app.run(debug=True)
+
