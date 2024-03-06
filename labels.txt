@@ -1,3 +1,0 @@
-0 full_body
-1 half_body
-2 wrong_image
