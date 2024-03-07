@@ -2,17 +2,13 @@ from flask import Flask, request, jsonify
 from keras.models import load_model
 from PIL import Image, ImageOps
 import numpy as np
-import io
+
 
 app = Flask(__name__)
 
-# Consider loading the model and labels in a function to avoid global scope issues
-def load_model_and_labels():
-    model = load_model("keras_model_hamza_lite.h5", compile=False)
-    class_names = open("labels_lite.txt", "r").readlines()
-    return model, class_names
-
-model, class_names = load_model_and_labels()
+# Load the model and labels when the application starts
+model = load_model("keras_model_hamza_lite.h5", compile=False)
+class_names = open("labels_lite.txt", "r").readlines()
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -23,10 +19,9 @@ def predict():
         return jsonify({"error": "No file selected"}), 400
 
     try:
-        # Using BytesIO for in-memory file storage to avoid read/write filesystem issues
-        image = Image.open(io.BytesIO(file.read())).convert("RGB")
+        image = Image.open(file).convert("RGB")
         size = (224, 224)
-        image = ImageOps.fit(image, size, Image.ANTIALIAS)
+        image = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
 
         image_array = np.asarray(image)
         normalized_image_array = (image_array.astype(np.float32) / 127.5) - 1
@@ -45,5 +40,7 @@ def predict():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+
 
 
