@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify
 from keras.models import load_model
 from PIL import Image, ImageOps
 import numpy as np
-from waitress import serve
 import io
 
 app = Flask(__name__)
@@ -10,7 +9,7 @@ app = Flask(__name__)
 # Consider loading the model and labels in a function to avoid global scope issues
 def load_model_and_labels():
     model = load_model("keras_model_hamza_lite.h5", compile=False)
-    class_names = open("labels_lite", "r").readlines()
+    class_names = open("labels_lite.txt", "r").readlines()
     return model, class_names
 
 model, class_names = load_model_and_labels()
