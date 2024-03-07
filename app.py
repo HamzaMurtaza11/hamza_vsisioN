@@ -3,48 +3,38 @@ from keras.models import load_model
 from PIL import Image, ImageOps
 import numpy as np
 
-
 app = Flask(__name__)
 
-# Load the model and labels when the application starts
+# Assuming the model is relatively large and causing timeouts due to loading times or inference processing,
+# ensure it is loaded efficiently and consider using a lighter model if possible.
 model = load_model("keras_model_hamza_lite.h5", compile=False)
-class_names = open("labels_lite.txt", "r").readlines()
+class_names = [line.strip() for line in open("labels_lite.txt", "r")]
 
 @app.route('/predict', methods=['POST'])
 def predict():
     if 'file' not in request.files:
         return jsonify({"error": "file is required"}), 400
     file = request.files['file']
-    if file.filename == '':
+    if not file or file.filename == '':
         return jsonify({"error": "No file selected"}), 400
 
-    image = None  # Initialize to ensure it's in scope for error handling
-
     try:
-        with Image.open(file).convert("RGB") as img:
-            size = (224, 224)
-            image = ImageOps.fit(img, size, Image.Resampling.LANCZOS)
+        # Streamlining the image preprocessing
+        with Image.open(file).convert("RGB") as image:
+            image = ImageOps.fit(image, (224, 224), Image.ANTIALIAS)
+            image_array = np.asarray(image) / 127.5 - 1  # Combined steps to reduce memory footprint
 
-            image_array = np.asarray(image)
-            normalized_image_array = (image_array.astype(np.float32) / 127.5) - 1
-
-            data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
-            data[0] = normalized_image_array
-
-            prediction = model.predict(data)
+            prediction = model.predict(np.expand_dims(image_array, axis=0))
             index = np.argmax(prediction)
-            class_name = class_names[index].strip()
-            confidence_score = float(prediction[0][index])
-
             return jsonify({
-                "class": class_name,
-                "confidence_score": confidence_score
+                "class": class_names[index],
+                "confidence_score": float(prediction[0][index])
             })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    finally:
-        if image is not None:
-            del image  # Attempt to free up memory
+
+
+
 
     
 
