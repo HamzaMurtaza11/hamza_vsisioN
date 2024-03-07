@@ -18,28 +18,34 @@ def predict():
     if file.filename == '':
         return jsonify({"error": "No file selected"}), 400
 
+    image = None  # Initialize to ensure it's in scope for error handling
+
     try:
-        image = Image.open(file).convert("RGB")
-        size = (224, 224)
-        image = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
+        with Image.open(file).convert("RGB") as img:
+            size = (224, 224)
+            image = ImageOps.fit(img, size, Image.Resampling.LANCZOS)
 
-        image_array = np.asarray(image)
-        normalized_image_array = (image_array.astype(np.float32) / 127.5) - 1
+            image_array = np.asarray(image)
+            normalized_image_array = (image_array.astype(np.float32) / 127.5) - 1
 
-        data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
-        data[0] = normalized_image_array
+            data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
+            data[0] = normalized_image_array
 
-        prediction = model.predict(data)
-        index = np.argmax(prediction)
-        class_name = class_names[index].strip()
-        confidence_score = float(prediction[0][index])
+            prediction = model.predict(data)
+            index = np.argmax(prediction)
+            class_name = class_names[index].strip()
+            confidence_score = float(prediction[0][index])
 
-        return jsonify({
-            "class": class_name,
-            "confidence_score": confidence_score
-        })
+            return jsonify({
+                "class": class_name,
+                "confidence_score": confidence_score
+            })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    finally:
+        if image is not None:
+            del image  # Attempt to free up memory
+
     
 
 
